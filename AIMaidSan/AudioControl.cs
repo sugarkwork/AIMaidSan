@@ -1,11 +1,7 @@
 ﻿using NAudio.Wave;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Threading;
 
 namespace AIMaidSan
 {
@@ -20,8 +16,10 @@ namespace AIMaidSan
             this.voiceVox = voiceVox;
         }
 
-        public async Task Speak(string text)
+        public async Task Speak(string? text)
         {
+            if(string.IsNullOrEmpty(text)) return;
+
             while (Playing)
             {
                 await Task.Delay(1000);
@@ -71,7 +69,7 @@ namespace AIMaidSan
                 voiceInfo = new VoiceInfo(voice);
                 voiceInfo.OnPlaybackStopped += (StoppedEventArgs e) =>
                 {
-                    Console.WriteLine($"Audio Stop : {e}");
+                    Console.WriteLine($"Audio Stop : {e.Exception}");
                     Playing = false;
                 };
                 voiceInfo.Play();

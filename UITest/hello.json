@@ -1,0 +1,33 @@
+﻿{
+   "model":"gpt-3.5-turbo-0613",
+   "messages":[
+      {
+         "role":"user",
+         "content":""
+      }
+   ],
+   "functions":[
+      {
+         "name":"haru_talk",
+         "description":"Outputs Haru's lines.",
+         "parameters":{
+            "type":"object",
+            "properties":{
+               "talk":{
+                  "type":"string",
+                  "description":"Haru's lines."
+               },
+               "expression":{
+                  "type":"string",
+                  "description":"Haru's facial expression."
+               }
+            }
+         },
+         "required":[
+            "talk",
+            "expression"
+         ]
+      }
+   ],
+   "function_call":"auto"
+}

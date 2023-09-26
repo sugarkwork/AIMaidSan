@@ -7,6 +7,6 @@
         mc:Ignorable="d"
         Title="AIMaidSan MainWindow" Height="552" Width="346" Background="Transparent" AllowsTransparency="True" OpacityMask="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" WindowStyle="None" BorderBrush="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" Foreground="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" Loaded="Window_Loaded" Closing="MaidWindow_Closing" Closed="MaidWindow_Closed" Icon="/maid_icon.png">
     
-        <Image x:Name="main_image" Source="/result.png" Loaded="main_image_Loaded" Opacity="0"/>
+        <Image x:Name="main_image" Loaded="main_image_Loaded" Opacity="0"/>
     
 </Window>

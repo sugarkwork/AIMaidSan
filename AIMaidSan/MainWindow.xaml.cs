@@ -1,32 +1,11 @@
-﻿using System;
+﻿using AIMaidSan.Properties;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using OpenAI;
-using System.Diagnostics;
-using System.Threading;
-using System.Runtime.InteropServices;
-using System.Net.Http;
-using System.IO;
-using System.Net;
-using System.Numerics;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using MeCab;
-using System.Xml.Linq;
-using System.Media;
-using NAudio.Wave;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace AIMaidSan
 {
@@ -39,6 +18,8 @@ namespace AIMaidSan
         WindowInfoControl windowInfoControl;
         AudioControl audioControl;
 
+        AICharacter charactorSettings;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -46,6 +27,9 @@ namespace AIMaidSan
             voicevox = new VoiceVox();
             windowInfoControl = new WindowInfoControl(Dispatcher);
             audioControl = new AudioControl(voicevox);
+
+            charactorSettings = new AICharacter(Settings.Default.Name);
+            main_image.Source = new BitmapImage(new Uri(charactorSettings.BaseImage, UriKind.Relative));
 
             this.MouseLeftButtonDown += (sender, e) => { this.DragMove(); };
             Console.CancelKeyPress += Console_CancelKeyPress;
@@ -76,19 +60,17 @@ namespace AIMaidSan
 
         private void WindowInfoControl_ChangeWindowEvent(string windowTitle, string processName, string? productName, string? fileName, int lookTimeMin)
         {
-            Console.WriteLine($"{windowTitle} ({lookTimeMin} min)");
-            Dispatcher.Invoke(() =>
+            Console.WriteLine($"{processName} ({lookTimeMin} min)");
+
+            if (windowTitle == "AIMaidSan MainWindow" && lookTimeMin == 0)
             {
-                if (windowTitle == "AIMaidSan MainWindow" && lookTimeMin == 0)
-                {
-                    var _ = audioControl.Speak("どうかしましたか？");
-                }
-            });
+                var _ = audioControl.Speak("どうかしましたか？");
+            }
         }
 
         private void Voicevox_voiceVoxReady()
         {
-            var _ = audioControl.Speak("ご主人様。用件がございましたらお声がけください。");
+            var _ = audioControl.Speak(charactorSettings.Taking().Result);
         }
 
 
