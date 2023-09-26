@@ -26,6 +26,7 @@ using MeCab;
 using System.Xml.Linq;
 using System.Media;
 using NAudio.Wave;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace AIMaidSan
 {
@@ -34,14 +35,17 @@ namespace AIMaidSan
     /// </summary>
     public partial class MainWindow : Window
     {
-        VoiceVox voicevox = new VoiceVox();
+        VoiceVox voicevox;
         WindowInfoControl windowInfoControl;
+        AudioControl audioControl;
 
         public MainWindow()
         {
             InitializeComponent();
 
+            voicevox = new VoiceVox();
             windowInfoControl = new WindowInfoControl(Dispatcher);
+            audioControl = new AudioControl(voicevox);
 
             this.MouseLeftButtonDown += (sender, e) => { this.DragMove(); };
             Console.CancelKeyPress += Console_CancelKeyPress;
@@ -52,9 +56,22 @@ namespace AIMaidSan
             Console.WriteLine("Window_Loaded");
 
             voicevox.voiceVoxReady += Voicevox_voiceVoxReady;
-            var _ = voicevox.StartVoiceVox();
-
             windowInfoControl.ChangeWindowEvent += WindowInfoControl_ChangeWindowEvent;
+            audioControl.startAudio += AudioControl_startAudio;
+
+            var _ = voicevox.StartVoiceVox();
+        }
+
+        private void AudioControl_startAudio(string text)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TalkWindow talkWindow = new TalkWindow();
+                talkWindow.SetText(text);
+                talkWindow.Left = this.Left - (talkWindow.Width * 1.1);
+                talkWindow.Top = this.Top + (talkWindow.Height + (this.Height / 2) - new Random().Next((int)this.Height));
+                talkWindow.Show();
+            });
         }
 
         private void WindowInfoControl_ChangeWindowEvent(string windowTitle, string processName, string? productName, string? fileName, int lookTimeMin)
@@ -64,124 +81,16 @@ namespace AIMaidSan
             {
                 if (windowTitle == "AIMaidSan MainWindow" && lookTimeMin == 0)
                 {
-                    var _ = Speak("どうかしましたか？");
+                    var _ = audioControl.Speak("どうかしましたか？");
                 }
             });
         }
 
         private void Voicevox_voiceVoxReady()
         {
-            var _ = Speak("ご主人様。用件がございましたらお声がけください。");
+            var _ = audioControl.Speak("ご主人様。用件がございましたらお声がけください。");
         }
 
-        private async Task Speak(string text)
-        {
-            while (Playing)
-            {
-                await Task.Delay(1000);
-            }
-            Playing = true;
-
-            var stream = await voicevox.GetAudioStream(text);
-
-            try
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    TalkWindow talkWindow = new TalkWindow();
-                    talkWindow.SetText(text);
-                    talkWindow.Left = this.Left - (talkWindow.Width * 1.1);
-                    talkWindow.Top = this.Top + (talkWindow.Height + (this.Height / 2) - new Random().Next((int)this.Height));
-                    talkWindow.Show();
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-            if (stream != null)
-            {
-                await Task.Run(() =>
-                {
-                    PlayVoice(stream);
-                });
-            }
-        }
-
-        delegate void PlaybackStopped(StoppedEventArgs e);
-
-        class VoiceInfo : IDisposable
-        {
-            public event PlaybackStopped? OnPlaybackStopped;
-            public VoiceInfo(Stream? voice, bool onetime = true)
-            {
-                VoiceStream = voice;
-                outputDevice = new WaveOutEvent();
-                outputDevice.PlaybackStopped += (object? sender, StoppedEventArgs e) =>
-                {
-                    OnPlaybackStopped?.Invoke(e);
-                    if (onetime)
-                    {
-                        this.Dispose();
-                    }
-                };
-            }
-
-            public void Play()
-            {
-                if (VoiceStream != null) 
-                    VoiceStream.Position = 0;
-                audioFile = new WaveFileReader(VoiceStream);
-                if (outputDevice != null)
-                {
-                    outputDevice.Init(audioFile);
-                    outputDevice.Play();
-                }
-            }
-
-            public Stream? VoiceStream;
-            public WaveOutEvent? outputDevice;
-            public WaveFileReader? audioFile;
-
-            public void Dispose()
-            {
-                audioFile?.Dispose();
-                audioFile = null;
-                outputDevice?.Dispose();
-                outputDevice = null;
-                VoiceStream?.Dispose();
-                VoiceStream = null;
-            }
-        }
-
-        private object playing_lock = new object();
-        private bool playing_value = false;
-        public bool Playing
-        {
-            get { lock (playing_lock) { return playing_value; } }
-            set { lock (playing_lock) { playing_value = value; Console.WriteLine($"Playing : {value}"); } }
-        }
-
-        private VoiceInfo? voiceInfo;
-
-        private void PlayVoice(MemoryStream voice)
-        {
-            try
-            {
-                voiceInfo = new VoiceInfo(voice);
-                voiceInfo.OnPlaybackStopped += (StoppedEventArgs e) =>
-                {
-                    Console.WriteLine(e.Exception);
-                    Playing = false;
-                };
-                voiceInfo.Play();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"PlayVoice Error: {ex.Message}");
-                Playing = false;
-            }
-        }
 
         private void main_image_Loaded(object sender, RoutedEventArgs e)
         {

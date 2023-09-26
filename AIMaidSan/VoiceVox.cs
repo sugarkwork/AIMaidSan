@@ -12,10 +12,10 @@ using System.Net.NetworkInformation;
 
 namespace AIMaidSan
 {
-    internal class VoiceVox
+    public class VoiceVox
     {
-        private int port = 50021;
-        private bool ready = false;
+        public int Port = 50021;
+        public bool Ready = false;
 
         private Process? voiceVoxProcess;
         private string BaseUrl = "http://localhost";
@@ -33,22 +33,22 @@ namespace AIMaidSan
             this.speaker = speaker;
             if (!await CheckVoiceVox())
             {
-                port = FindAvailablePort();
+                Port = FindAvailablePort();
                 var dirPath = Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\VOICEVOX\");
-                await StartProcessAndGetOutputAsync(dirPath, System.IO.Path.Combine(dirPath, "run.exe"), $"--host localhost --port {port}");
+                await StartProcessAndGetOutputAsync(dirPath, System.IO.Path.Combine(dirPath, "run.exe"), $"--host localhost --port {Port}");
             }
         }
 
         public async Task<bool> CheckVoiceVox()
         {
-            var targetUrl = new Uri($"{BaseUrl}:{port}/version");
+            var targetUrl = new Uri($"{BaseUrl}:{Port}/version");
             try
             {
                 using HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
                 string content = await client.GetStringAsync(targetUrl);
                 await Console.Out.WriteLineAsync($"VoiceVox Version : {content}");
 
-                ready = true;
+                Ready = true;
                 await Task.Run(() =>
                 {
                     if (voiceVoxReady != null)
@@ -69,15 +69,15 @@ namespace AIMaidSan
         public async Task<MemoryStream?> GetAudioStream(string textContent)
         {
             await Console.Out.WriteLineAsync($"Speak: {textContent}");
-            if (!ready) { return null; }
+            if (!Ready) { return null; }
 
-            var queryResponse = await SendRequest($"{BaseUrl}:{port}/audio_query?speaker={this.speaker}&text={WebUtility.UrlEncode(textContent)}");
+            var queryResponse = await SendRequest($"{BaseUrl}:{Port}/audio_query?speaker={this.speaker}&text={WebUtility.UrlEncode(textContent)}");
             if (queryResponse == null || queryResponse.Length == 0)
             {
                 return null;
             }
             var queryJson = Encoding.UTF8.GetString(queryResponse);
-            var audioResponse = await SendRequest($"{BaseUrl}:{port}/synthesis?speaker={this.speaker}&enable_interrogative_upspeak=true", queryJson, "application/json");
+            var audioResponse = await SendRequest($"{BaseUrl}:{Port}/synthesis?speaker={this.speaker}&enable_interrogative_upspeak=true", queryJson, "application/json");
 
             return new MemoryStream(audioResponse.Select(b => b).ToArray());
         }
@@ -124,9 +124,9 @@ namespace AIMaidSan
                     {
                         list.RemoveAt(0);
                     }
-                    if (!ready && (data.Contains("Application startup complete") || data.Contains("emitting double-array: 100%") || data.Contains("done!")))
+                    if (!Ready && (data.Contains("Application startup complete") || data.Contains("emitting double-array: 100%") || data.Contains("done!")))
                     {
-                        ready = true;
+                        Ready = true;
                         if(voiceVoxReady != null)
                         {
                             voiceVoxReady();
