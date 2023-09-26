@@ -4,7 +4,7 @@
 
 まだ使えません。
 
-![image](https://github.com/sugarkwork/AIMaidSan/assets/98699377/b95eebf8-0386-4f7d-b6bc-d534e4d01f25)
+![image](https://github.com/sugarkwork/AIMaidSan/assets/98699377/8b47922a-49c2-4fc1-822a-8ab500c4016c)
 
 # 必要なもの
 
