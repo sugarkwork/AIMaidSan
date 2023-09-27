@@ -1,6 +1,7 @@
 ﻿using AIMaidSan.Properties;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,25 +26,35 @@ namespace AIMaidSan
             InitializeComponent();
 
             voicevox = new VoiceVox();
+            voicevox.voiceVoxReady += Voicevox_voiceVoxReady;
+            var _ = voicevox.StartVoiceVox();
+
             windowInfoControl = new WindowInfoControl(Dispatcher);
             audioControl = new AudioControl(voicevox);
 
-            charactorSettings = new AICharacter(Settings.Default.Name);
+            charactorSettings = new AICharacter(Settings.Default.Name, GetAPIKey());
             main_image.Source = new BitmapImage(new Uri(charactorSettings.BaseImage, UriKind.Relative));
 
             this.MouseLeftButtonDown += (sender, e) => { this.DragMove(); };
             Console.CancelKeyPress += Console_CancelKeyPress;
         }
 
+        public string GetAPIKey()
+        {
+            var apiKey = Settings.Default.API;
+            if (string.IsNullOrEmpty(apiKey) && File.Exists("apikey.txt"))
+            {
+                apiKey = File.ReadAllText("apikey.txt").Trim();
+            }
+            return apiKey;
+        }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             Console.WriteLine("Window_Loaded");
 
-            voicevox.voiceVoxReady += Voicevox_voiceVoxReady;
             windowInfoControl.ChangeWindowEvent += WindowInfoControl_ChangeWindowEvent;
-            audioControl.startAudio += AudioControl_startAudio;
-
-            var _ = voicevox.StartVoiceVox();
+            audioControl.StartAudioEvent += AudioControl_startAudio;
         }
 
         private void AudioControl_startAudio(string text)
@@ -62,6 +73,12 @@ namespace AIMaidSan
         {
             Console.WriteLine($"{processName} ({lookTimeMin} min)");
 
+            Console.WriteLine($"windowTitle = {windowTitle}");
+            Console.WriteLine($"processName = {processName}");
+            Console.WriteLine($"productName = {productName}");
+            Console.WriteLine($"fileName = {fileName}");
+            Console.WriteLine($"lookTimeMin = {lookTimeMin}");
+
             if (windowTitle == "AIMaidSan MainWindow" && lookTimeMin == 0)
             {
                 var _ = audioControl.Speak("どうかしましたか？");
@@ -70,7 +87,7 @@ namespace AIMaidSan
 
         private void Voicevox_voiceVoxReady()
         {
-            var _ = audioControl.Speak(charactorSettings.Taking().Result);
+            var _ = audioControl.SpeakMulti(charactorSettings.Taking().Result);
         }
 
 

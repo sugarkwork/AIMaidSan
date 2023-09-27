@@ -14,15 +14,9 @@ namespace AIMaidSan
         public static List<string> ConvertAutoLineBreak(string data)
         {
             List<string> result = new List<string>();
-            var lines = data.Split(new char[] { '。', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines)
+            foreach (var line in data.Split(new char[] { '\n', '\r', '。' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                var trimLine = line.Trim();
-                if (trimLine.Length == 0)
-                {
-                    continue;
-                }
-                result.Add(trimLine);
+                result.Add(line);
             }
             return ConvertAutoLineBreak(result);
         }
@@ -77,6 +71,10 @@ namespace AIMaidSan
                 {
                     wakachi.Add("");
                     surface = string.Empty;
+                }
+                if (surface.Equals("？"))
+                {
+                    wakachi.Add("");
                 }
 
                 wakachi[wakachi.Count - 1] += surface;

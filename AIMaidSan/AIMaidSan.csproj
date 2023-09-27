@@ -6,13 +6,16 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>maid_icon.ico</ApplicationIcon>
+    <Authors>SugarKnight</Authors>
+    <Copyright>SugarKnight</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>maid_icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="apikey.txt" />
     <None Remove="Characters\Haru\profile.txt" />
     <None Remove="json\talk.json" />
-    <None Remove="key.txt" />
-    <None Remove="maid_icon.png" />
     <None Remove="result.png" />
   </ItemGroup>
 
@@ -23,13 +26,20 @@
     <Content Include="json\talk.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="key.txt">
+    <Content Include="apikey.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="maid_icon.ico" />
     <Content Include="Characters\Haru\base.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -54,6 +64,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="maid_icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

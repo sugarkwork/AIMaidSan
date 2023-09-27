@@ -54,24 +54,23 @@ namespace AIMaidSan
             get; set;
         }
 
-        public AICharacter(string name)
+        public string APIKey { get; set; }
+
+        public AICharacter(string name, string apiKey)
         {
             Name = name;
             Expression = "default";
+            APIKey = apiKey;
         }
 
         public async Task<string> Taking()
         {
+            if (string.IsNullOrWhiteSpace(APIKey))
+            {
+                return "OpenAI の API キーが設定されていないため、AIを使用した会話を行えません。";
+            }
             try
             {
-                using HttpClient client = new HttpClient();
-                var apiKey = Settings.Default.API;
-                if (string.IsNullOrEmpty(apiKey))
-                {
-                    apiKey = File.ReadAllText("key.txt").Trim();
-                }
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-
                 // JSONファイルからデータを読み込む
                 string jsonData = await Task.Run(() =>
                 {
@@ -79,31 +78,16 @@ namespace AIMaidSan
                 });
                 await Console.Out.WriteLineAsync(jsonData);
 
-                var response = await client.PostAsync(BaseUrl, new StringContent(jsonData, Encoding.UTF8, "application/json"));
-
-                await Console.Out.WriteLineAsync($"{response.IsSuccessStatusCode} - {response.StatusCode}");
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var jsonObj = await PostGPT(jsonData);
 
-                    var jsonObject = JObject.Parse(responseBody);
-#pragma warning disable CS8602 // null 参照の可能性があるものの逆参照です。
-                    string functionArgumentsString = jsonObject["choices"][0]["message"]["function_call"]["arguments"].ToString();
-                    var functionArgumentsObject = JObject.Parse(functionArgumentsString);
-                    try
-                    {
-                        if (functionArgumentsObject.ContainsKey("expression"))
-                        {
-                            Expression = functionArgumentsObject["expression"].ToString();
-                        }
-                    }
-                    catch { }
-                    return functionArgumentsObject["talk"].ToString();
-#pragma warning restore CS8602 // null 参照の可能性があるものの逆参照です。
+                    Expression = GetString(jsonObj, "expression", "default");
+                    return GetString(jsonObj, "talk");
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"GPTTest Error 1: {BaseUrl} => {response.StatusCode}");
+                    await Console.Out.WriteLineAsync(ex.Message);
                 }
             }
             catch (Exception ex)
@@ -111,6 +95,42 @@ namespace AIMaidSan
                 await Console.Out.WriteLineAsync($"GPTTest Error 2: {ex.ToString()}");
             }
             return string.Empty;
+        }
+
+        private string GetString(JObject? json, string key, string default_value = "")
+        {
+            if (json != null && json.ContainsKey(key) && json[key] != null)
+            {
+                var data = json[key];
+                if (data != null)
+                {
+                    return data.ToString();
+                }
+            }
+            return default_value;
+        }
+
+        private async Task<JObject?> PostGPT(string jsonData)
+        {
+            using HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKey}");
+            var response = await client.PostAsync(BaseUrl, new StringContent(jsonData, Encoding.UTF8, "application/json"));
+
+            await Console.Out.WriteLineAsync($"Success: {response.IsSuccessStatusCode} / Status Code: {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            var jsonObject = JObject.Parse(responseBody);
+#pragma warning disable CS8602 // null 参照の可能性があるものの逆参照です。
+            string functionArgumentsString = jsonObject["choices"][0]["message"]["function_call"]["arguments"].ToString();
+            var functionArgumentsObject = JObject.Parse(functionArgumentsString);
+#pragma warning restore CS8602 // null 参照の可能性があるものの逆参照です。
+
+            return functionArgumentsObject;
         }
 
         private string JsonExtensionDataAttribute(string jsonData)
@@ -128,7 +148,7 @@ namespace AIMaidSan
                     new JObject { ["role"] = "user", ["content"] = "Please output a greeting in Japanese to your husband. Please be concerned about your husband's health and work." }, };
 
                 // JObject を JSON データに戻す
-                string updatedJsonData = jsonObject.ToString(Newtonsoft.Json.Formatting.Indented);
+                string updatedJsonData = jsonObject.ToString(Formatting.Indented);
                 return updatedJsonData;
             }
 

@@ -8,12 +8,30 @@ namespace AIMaidSan
     public class AudioControl
     {
         public delegate void StartAudio(string text);
-        public event StartAudio? startAudio;
+        public event StartAudio? StartAudioEvent;
 
         private VoiceVox voiceVox;
         public AudioControl(VoiceVox voiceVox)
         {
             this.voiceVox = voiceVox;
+        }
+
+        public async Task SpeakMulti(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            foreach (string line in text.Split('。'))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+                var trim_line = line.Trim();
+                await Speak(trim_line);
+            }
         }
 
         public async Task Speak(string? text)
@@ -22,7 +40,7 @@ namespace AIMaidSan
 
             while (Playing)
             {
-                await Task.Delay(1000);
+                await Task.Delay(500);
             }
             Playing = true;
 
@@ -30,11 +48,11 @@ namespace AIMaidSan
 
             try
             {
-                if (startAudio != null)
+                if (StartAudioEvent != null)
                 {
                     await Task.Run(() =>
                     {
-                        startAudio(text);
+                        StartAudioEvent(text);
                     });
                 }
             }

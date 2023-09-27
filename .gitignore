@@ -361,6 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/AIMaidSan/key.txt
+/AIMaidSan/apikey.txt
 /UITest/key.txt
-/UITest/testdata.txt
