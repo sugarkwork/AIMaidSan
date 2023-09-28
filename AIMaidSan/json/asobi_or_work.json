@@ -1,0 +1,33 @@
+﻿{
+   "model":"gpt-3.5-turbo-0613",
+   "messages":[
+      {
+         "role":"user",
+         "content":"The following information is about processes open on your PC.\nPredict the probability of working and the probability of playing."
+      }
+   ],
+   "functions":[
+    {
+      "name": "job_checker",
+      "description": "Predict the probability of working and the probability of playing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "working": {
+            "type": "number",
+            "description": "Probability that the user is currently working (unit: %)"
+          },
+          "slacking": {
+            "type": "number",
+            "description": "Probability that the user is currently slacking off at work (unit: %)"
+          }
+        }
+      },
+      "required": [
+        "working",
+        "slacking"
+      ]
+    }
+   ],
+   "function_call":"auto"
+}

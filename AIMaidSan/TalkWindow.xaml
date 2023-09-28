@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AIMaidSan"
         mc:Ignorable="d"
-        Title="TalkWindow" Height="498" Width="500" WindowStyle="None" Background="Transparent" AllowsTransparency="True">
+        Title="AIMaidSan TalkWindow" Height="498" Width="500" WindowStyle="None" Background="Transparent" AllowsTransparency="True">
     <Grid x:Name="myGrid">
         <Image x:Name="image" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,0,0" Stretch="None" Width="500" Height="500" MouseUp="image_MouseUp"/>
     </Grid>

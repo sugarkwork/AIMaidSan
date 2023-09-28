@@ -1,6 +1,7 @@
 ﻿using NAudio.Wave;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AIMaidSan
@@ -13,6 +14,7 @@ namespace AIMaidSan
         private VoiceVox voiceVox;
         public AudioControl(VoiceVox voiceVox)
         {
+            Console.WriteLine("@@@@@@@@@@@@@@@@@AudioControl");
             this.voiceVox = voiceVox;
         }
 
@@ -34,15 +36,16 @@ namespace AIMaidSan
             }
         }
 
+        private SemaphoreSlim speakSemaphore = new(1);
+
         public async Task Speak(string? text)
         {
-            if(string.IsNullOrEmpty(text)) return;
+            if (string.IsNullOrEmpty(text)) return;
 
             while (Playing)
             {
                 await Task.Delay(500);
             }
-            Playing = true;
 
             var stream = await this.voiceVox.GetAudioStream(text);
 
@@ -63,6 +66,7 @@ namespace AIMaidSan
 
             if (stream != null)
             {
+                await speakSemaphore.WaitAsync();
                 await Task.Run(() =>
                 {
                     PlayVoice(stream);
@@ -89,6 +93,7 @@ namespace AIMaidSan
                 {
                     Console.WriteLine($"Audio Stop : {e.Exception}");
                     Playing = false;
+                    speakSemaphore.Release();
                 };
                 voiceInfo.Play();
             }

@@ -1,5 +1,6 @@
 ﻿using AIMaidSan.Properties;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,28 +16,38 @@ namespace AIMaidSan
     /// </summary>
     public partial class MainWindow : Window
     {
-        VoiceVox voicevox;
-        WindowInfoControl windowInfoControl;
-        AudioControl audioControl;
+        private VoiceVox voicevox;
+        private WindowInfoControl windowInfoControl;
+        private AudioControl audioControl;
+        private AICharacter charactorSettings;
 
-        AICharacter charactorSettings;
+        private bool SystemReady = false;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            voicevox = new VoiceVox();
-            voicevox.voiceVoxReady += Voicevox_voiceVoxReady;
-            var _ = voicevox.StartVoiceVox();
-
-            windowInfoControl = new WindowInfoControl(Dispatcher);
-            audioControl = new AudioControl(voicevox);
-
-            charactorSettings = new AICharacter(Settings.Default.Name, GetAPIKey());
-            main_image.Source = new BitmapImage(new Uri(charactorSettings.BaseImage, UriKind.Relative));
-
             this.MouseLeftButtonDown += (sender, e) => { this.DragMove(); };
             Console.CancelKeyPress += Console_CancelKeyPress;
+
+            voicevox = new VoiceVox();
+            voicevox.VoiceVoxReadyEvent += Voicevox_voiceVoxReady;
+
+            windowInfoControl = new WindowInfoControl(Dispatcher);
+            windowInfoControl.ChangeWindowEvent += WindowInfoControl_ChangeWindowEvent;
+
+            audioControl = new AudioControl(voicevox);
+            audioControl.StartAudioEvent += AudioControl_startAudio;
+
+            charactorSettings = new AICharacter(Settings.Default.Name, GetAPIKey());
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Console.WriteLine("Window_Loaded");
+            var _ = voicevox.StartVoiceVox();
+
+            main_image.Source = new BitmapImage(new Uri(charactorSettings.BaseImage, UriKind.Relative));
         }
 
         public string GetAPIKey()
@@ -47,14 +58,6 @@ namespace AIMaidSan
                 apiKey = File.ReadAllText("apikey.txt").Trim();
             }
             return apiKey;
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            Console.WriteLine("Window_Loaded");
-
-            windowInfoControl.ChangeWindowEvent += WindowInfoControl_ChangeWindowEvent;
-            audioControl.StartAudioEvent += AudioControl_startAudio;
         }
 
         private void AudioControl_startAudio(string text)
@@ -69,70 +72,96 @@ namespace AIMaidSan
             });
         }
 
+        class ProcessLog
+        {
+            public Dictionary<string, int> titles = new();
+            public int totaltime = 0;
+
+            public string product = string.Empty;
+            public string exefile = string.Empty;
+            public string process = string.Empty;
+        }
+
+        private int scold = 0;
+
+        private ConcurrentDictionary<string, ProcessLog> processLog = new ConcurrentDictionary<string, ProcessLog>();
+
         private void WindowInfoControl_ChangeWindowEvent(string windowTitle, string processName, string? productName, string? fileName, int lookTimeMin)
         {
             Console.WriteLine($"{processName} ({lookTimeMin} min)");
-
-            Console.WriteLine($"windowTitle = {windowTitle}");
-            Console.WriteLine($"processName = {processName}");
-            Console.WriteLine($"productName = {productName}");
-            Console.WriteLine($"fileName = {fileName}");
-            Console.WriteLine($"lookTimeMin = {lookTimeMin}");
+            if (!SystemReady) { return; }
 
             if (windowTitle == "AIMaidSan MainWindow" && lookTimeMin == 0)
             {
-                var _ = audioControl.Speak("どうかしましたか？");
+                var _ = audioControl.SpeakMulti(charactorSettings.ShortResponce().Result);
             }
-        }
+            if (windowTitle == "AIMaidSan MainWindow" || windowTitle == "AIMaidSan InputWindows" || windowTitle == "AIMaidSan ChoiceWindow" || windowTitle == "AIMaidSan TalkWindow") return;
 
-        private void Voicevox_voiceVoxReady()
-        {
-            var _ = audioControl.SpeakMulti(charactorSettings.Taking().Result);
-        }
-
-
-        private void main_image_Loaded(object sender, RoutedEventArgs e)
-        {
-            MaidWindow.Height = SystemParameters.WorkArea.Height / 2.5;
-            MaidWindow.Width = MaidWindow.Height * (main_image.Source.Width / main_image.Source.Height);
-
-            MaidWindow.Top = SystemParameters.WorkArea.Height - MaidWindow.Height;
-            MaidWindow.Left = SystemParameters.WorkArea.Width - MaidWindow.Width - (SystemParameters.WorkArea.Width / 20);
-
-            Task _;
-            _ = FadeInWindow();
-            _ = windowInfoControl.GetActiveWindowTitle();
-        }
-
-        private async Task FadeInWindow()
-        {
-            for (int i = 0; i < 100; i += 15)
+            if (lookTimeMin >= 0)
             {
-                Dispatcher.Invoke(() =>
+                if (!processLog.ContainsKey(processName))
                 {
-                    main_image.Opacity = i / 100.0;
-                });
-                await Task.Delay(120);
+                    processLog[processName] = new ProcessLog();
+                }
+                var process = processLog[processName];
+                process.totaltime++;
+                process.product = productName ?? string.Empty;
+                var trim_title = windowTitle.PadRight(24)[..24].Trim();
+                if (!process.titles.ContainsKey(trim_title))
+                {
+                    process.titles[trim_title] = 0;
+                }
+                process.titles[trim_title]++;
+                process.exefile = fileName ?? string.Empty;
+                process.process = processName ?? string.Empty;
+
+                if (process.totaltime > 60)
+                {
+                    Task.Run(() =>
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        var processThree = processLog.OrderByDescending(pair => pair.Value.totaltime).Take(3).ToDictionary(pair => pair.Key, pair => pair.Value).Values.ToList();
+                        for (int i = 0; i < processThree.Count; i++)
+                        {
+                            var item = processThree[i];
+                            var titleThree = item.titles.OrderByDescending(pair => pair.Value).Take(3).ToDictionary(pair => pair, pair => pair.Value).Values.ToList();
+                            sb.AppendLine($"Process {i + 1}:");
+                            sb.AppendLine($"Product Name = {item.product}");
+                            sb.AppendLine($"Process Name = {item.process}");
+                            sb.AppendLine($"File Name = {item.exefile}");
+                            sb.AppendLine($"Window Titles = [{string.Join(", ", titleThree)}]");
+                            sb.AppendLine($"Cumulative working time: {item.totaltime} min.");
+                            sb.AppendLine();
+                        }
+
+                        var result = charactorSettings.WorkCheck(sb.ToString().Trim()).Result;
+                        if (result != null)
+                        {
+                            if(result["working"] < result["slacking"])
+                            {
+                                scold++;
+                                _ = audioControl.SpeakMulti(charactorSettings.FreeTalk($"It seems like your husband is playing instead of working. Please scold me. This is the {scold} time.").Result);
+                            }
+                            processLog.Clear();
+                        }
+                    });
+                }
+                return;
             }
-            Dispatcher.Invoke(() =>
+        }
+
+        private void Voicevox_voiceVoxReady(bool success)
+        {
+            if (success)
             {
-                main_image.Opacity = 1.0;
-            });
-        }
+                var _ = audioControl.SpeakMulti("音声システムの準備が出来ました。");
+            }
+            else
+            {
+                var _ = audioControl.SpeakMulti("音声システムは使用しません。");
+            }
 
-        private void MaidWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            voicevox.ExitVoiceVox();
-        }
-
-        private void MaidWindow_Closed(object sender, EventArgs e)
-        {
-            voicevox.ExitVoiceVox();
-        }
-
-        private void Console_CancelKeyPress(object? sender, ConsoleCancelEventArgs e)
-        {
-            voicevox.ExitVoiceVox();
+            SystemReady = true;
         }
     }
 

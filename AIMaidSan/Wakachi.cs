@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace AIMaidSan
 {
+    // convert from 
+    // https://qiita.com/shimajiroxyz/items/e44058af8b036f5354aa
+    // 
+
     public class WakachiConverter
     {
         private static readonly string[] breakPos = { "名詞", "動詞", "接頭詞", "副詞", "感動詞", "形容詞", "形容動詞", "連体詞" };

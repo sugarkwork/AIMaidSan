@@ -26,8 +26,12 @@ using System.Net.Http.Json;
 using System.Xml;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
+using System.Xaml;
+using System.Xml.Serialization;
+using AIMaidSan;
 
-namespace AIMaidSan
+namespace UITest
 {
     /// <summary>
     /// TalkWindow.xaml の相互作用ロジック
@@ -40,11 +44,65 @@ namespace AIMaidSan
             this.MouseLeftButtonDown += (sender, e) => { this.DragMove(); };
 
             //SetText("検討すると良いでしょう。");
+            //var apiKey = File.ReadAllText("key.txt").Trim();
+            //var _ = GPTTest(apiKey);
 
-            var apiKey = File.ReadAllText("key.txt").Trim();
+            JsonMemory memory = new JsonMemory("test2.json", autosave: true);
 
-            var _ = GPTTest(apiKey);
+            InputWindow inputWindow = new InputWindow();
+
+            var data = memory.Get<List<string>>("hoge", "hoge");
+            if (data == null)
+            {
+                Console.WriteLine("hoge is null");
+            }
+            else
+            {
+                foreach (var item in data)
+                {
+                    Console.WriteLine(item);
+                }
+            }
+
+            inputWindow.Result = memory.Get<string>("input", "result") ?? "Default Value";
+
+            Console.WriteLine(memory.Get<Uri>("data", "url"));
+            Console.WriteLine(memory.Get<int>("number","num"));
+
+            if (inputWindow.ShowDialog() == true)
+            {
+                Console.WriteLine("true");
+                Console.WriteLine(inputWindow.Result);
+
+                memory.Set("input", "result", inputWindow.Result);
+                memory.Set("hoge", "hoge", new List<string> { "a", "b", "c" });
+                memory.Set("data", "url", new Uri("http://localhost"));
+                memory.Set("number", "num", 123);
+            }
+            else
+            {
+                Console.WriteLine("false");
+            }
+
+            ChoiceWindow chooserWindow = new ChoiceWindow();
+
+            chooserWindow.AddButton("SystemXml.dll' が読み込まれました。シンボルの読み込みをスキップしました。モジュールは最適化されていて、デバッグ オプションの [マイ コードのみ] 設定が有効になっています。", 1);
+            chooserWindow.AddButton("SystemXml.dll' が読み込まれました。シンボルの読み込みをスキップしました。モジュールは最適化されていて、デバッグ オプションの [マイ コードのみ] 設定が有効になっています。", 2);
+
+            if (chooserWindow.ShowDialog() == true)
+            {
+                Console.WriteLine("true");
+                Console.WriteLine(chooserWindow.Result);
+            }
+            else
+            {
+                Console.WriteLine("false");
+            }
+
         }
+
+        private ConcurrentDictionary<string, ConcurrentDictionary<string, string>>? Memory = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
+
 
         private const string BaseUrl = "https://api.openai.com/v1/chat/completions";
         private const string JsonFilePath = "hello.json";

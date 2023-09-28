@@ -33,7 +33,7 @@ namespace AIMaidSan
             this.dispatcher = window.Dispatcher;
         }
 
-        public async Task GetActiveWindowTitle()
+        public async Task StartCheckActiveWindowTitle()
         {
             string beforeProcess = string.Empty;
             string beforeTitle = string.Empty;
@@ -70,11 +70,6 @@ namespace AIMaidSan
                         if (beforeProcess != act.ProcessName)
                         {
                             beforeProcess = act.ProcessName;
-                            printInfo = true;
-                        }
-                        if (beforeTitle != act.MainWindowTitle)
-                        {
-                            beforeTitle = act.MainWindowTitle;
                             printInfo = true;
                         }
 

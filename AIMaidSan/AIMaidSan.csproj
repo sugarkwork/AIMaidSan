@@ -15,12 +15,16 @@
   <ItemGroup>
     <None Remove="apikey.txt" />
     <None Remove="Characters\Haru\profile.txt" />
+    <None Remove="json\asobi_or_work.json" />
     <None Remove="json\talk.json" />
     <None Remove="result.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Characters\Haru\profile.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="json\asobi_or_work.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="json\talk.json">
@@ -53,6 +57,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="ChoiceWindow.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="InputWindow.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>

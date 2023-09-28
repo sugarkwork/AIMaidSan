@@ -15,7 +15,7 @@ namespace AIMaidSan
     public class VoiceVox
     {
         public int Port = 50021;
-        public bool Ready = false;
+        private bool _ready = false;
 
         private Process? voiceVoxProcess;
         private string BaseUrl = "http://localhost";
@@ -24,18 +24,48 @@ namespace AIMaidSan
         private const int START_PORT = 50021;
         private const int MAX_PORT_OFFSET = 30000;
 
-        public delegate void VoiceVoxReady();
-        public event VoiceVoxReady? voiceVoxReady;
+        public delegate void VoiceVoxReady(bool success);
+        public event VoiceVoxReady? VoiceVoxReadyEvent;
         private int speaker = 58;
 
-        public async Task StartVoiceVox(int speaker = 58)
+        private bool _enable;
+        public bool Enable
+        {
+            get
+            {
+                return _enable;
+            }
+            set
+            {
+                if (value == false && _enable == true)
+                {
+                    ExitVoiceVox();
+                }
+                if (value == true && _enable == false)
+                {
+                    if (!CheckVoiceVox().Result)
+                    {
+                        Port = FindAvailablePort();
+                        var dirPath = Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\VOICEVOX\");
+                        var _ = StartProcessAndGetOutputAsync(dirPath, System.IO.Path.Combine(dirPath, "run.exe"), $"--host localhost --port {Port}");
+                    }
+                }
+                _enable = value;
+            }
+        }
+
+        public async Task StartVoiceVox(int speaker = 58, bool serviceStart = true)
         {
             this.speaker = speaker;
-            if (!await CheckVoiceVox())
+            await Task.Run(() => {
+                Enable = serviceStart;
+            });
+            if (!serviceStart)
             {
-                Port = FindAvailablePort();
-                var dirPath = Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\VOICEVOX\");
-                await StartProcessAndGetOutputAsync(dirPath, System.IO.Path.Combine(dirPath, "run.exe"), $"--host localhost --port {Port}");
+                await Task.Run(() =>
+                {
+                    VoiceVoxReadyEvent?.Invoke(false);
+                });
             }
         }
 
@@ -48,13 +78,11 @@ namespace AIMaidSan
                 string content = await client.GetStringAsync(targetUrl);
                 await Console.Out.WriteLineAsync($"VoiceVox Version : {content}");
 
-                Ready = true;
+                _enable = true;
+
                 await Task.Run(() =>
                 {
-                    if (voiceVoxReady != null)
-                    {
-                        voiceVoxReady();
-                    }
+                    VoiceVoxReadyEvent?.Invoke(true);
                 });
 
                 return true;
@@ -68,8 +96,13 @@ namespace AIMaidSan
 
         public async Task<MemoryStream?> GetAudioStream(string textContent)
         {
+            if (textContent.Length > 512)
+            {
+                Console.WriteLine($"Truncate String: length = {textContent.Length}");
+                textContent = textContent[..512];
+            }
             await Console.Out.WriteLineAsync($"Speak: {textContent}");
-            if (!Ready) { return null; }
+            if (!Enable) { return null; }
 
             var queryResponse = await SendRequest($"{BaseUrl}:{Port}/audio_query?speaker={this.speaker}&text={WebUtility.UrlEncode(textContent)}");
             if (queryResponse == null || queryResponse.Length == 0)
@@ -109,11 +142,12 @@ namespace AIMaidSan
             {
                 voiceVoxProcess.Kill();
                 voiceVoxProcess.WaitForExit();
-                voiceVoxProcess = null;
             }
+            voiceVoxProcess = null;
         }
 
-        public List<string> outputLines = new List<string>();
+        public List<string> Logs = new List<string>();
+        private readonly object listLock = new object();
         private void AddDataToList(List<string> list, string? data)
         {
             if (data != null)
@@ -124,22 +158,23 @@ namespace AIMaidSan
                     {
                         list.RemoveAt(0);
                     }
-                    if (!Ready && (data.Contains("Application startup complete") || data.Contains("emitting double-array: 100%") || data.Contains("done!")))
+                    if (!_ready && (data.Contains("Application startup complete") || data.Contains("emitting double-array: 100%") || data.Contains("done!")))
                     {
-                        Ready = true;
-                        if(voiceVoxReady != null)
+                        _ready = true;
+
+                        var _ = Task.Run(() =>
                         {
-                            voiceVoxReady();
-                        }
+                            VoiceVoxReadyEvent?.Invoke(true);
+                        });
                     }
                     list.Add(data);
                 }
             }
         }
 
-        private readonly object listLock = new object();
         private async Task StartProcessAndGetOutputAsync(string dirPath, string filename, string arguments)
         {
+            _ready = false;
             await Task.Run(() =>
             {
                 try
@@ -157,12 +192,12 @@ namespace AIMaidSan
 
                     process.OutputDataReceived += (sender, data) =>
                     {
-                        AddDataToList(outputLines, data.Data);
+                        AddDataToList(Logs, data.Data);
                     };
 
                     process.ErrorDataReceived += (sender, data) =>
                     {
-                        AddDataToList(outputLines, data.Data);
+                        AddDataToList(Logs, data.Data);
                     };
 
                     process.Start();
